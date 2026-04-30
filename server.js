@@ -13,7 +13,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const POLLING_INTERVAL_MS = 5 * 60 * 1000; 
 
-// Persistent Storage Setup
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir);
@@ -58,11 +57,9 @@ const insertMatch = db.prepare(`
 `);
 const getAllTrackedUsers = db.prepare('SELECT * FROM tracked_users');
 
-// Middleware
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Fetch matches from Henrik API
 async function fetchAndSaveMatches(region, name, tag) {
     try {
         console.log(`[API] Fetching matches for ${name}#${tag} (${region})...`);
@@ -123,7 +120,6 @@ async function fetchAndSaveMatches(region, name, tag) {
     }
 }
 
-// Background Polling
 setInterval(async () => {
     const users = getAllTrackedUsers.all();
     for (const user of users) {
@@ -132,10 +128,8 @@ setInterval(async () => {
     }
 }, POLLING_INTERVAL_MS);
 
-// API Endpoint with Date Filter
 app.get('/api/stats', async (req, res) => {
     const { name, tag, region, date } = req.query;
-    
     if (!name || !tag || !region) return res.status(400).json({ error: 'Missing parameters' });
 
     const lowerName = name.toLowerCase();
@@ -146,13 +140,13 @@ app.get('/api/stats', async (req, res) => {
 
     let matches;
     if (date) {
-        // Convert YYYY-MM-DD to Unix Timestamp (seconds)
-        const startTime = Math.floor(new Date(date).getTime() / 1000);
+        // Fix: Use local start of day timestamp
+        const startTime = Math.floor(new Date(date + "T00:00:00").getTime() / 1000);
         
         const getMatchesSince = db.prepare(`
             SELECT * FROM matches 
             WHERE name = ? AND tag = ? AND region = ? AND timestamp >= ? 
-            ORDER BY timestamp DESC LIMIT 10
+            ORDER BY timestamp DESC LIMIT 20
         `);
         matches = getMatchesSince.all(lowerName, lowerTag, lowerRegion, startTime);
     } else {
@@ -164,7 +158,6 @@ app.get('/api/stats', async (req, res) => {
         matches = getRecentMatches.all(lowerName, lowerTag, lowerRegion);
     }
     
-    // Initial fetch if DB is empty
     if (matches.length === 0 && !date) {
         await fetchAndSaveMatches(lowerRegion, lowerName, lowerTag);
         const getRecentMatches = db.prepare(`SELECT * FROM matches WHERE name = ? AND tag = ? AND region = ? ORDER BY timestamp DESC LIMIT 10`);
