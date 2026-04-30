@@ -57,6 +57,20 @@ db.exec(`
   );
 `);
 
+// --- SELF-HEALING MIGRATIONS ---
+// Migration 1: Check for last_updated column
+try {
+    db.prepare("ALTER TABLE tracked_users ADD COLUMN last_updated INTEGER DEFAULT 0").run();
+    console.log("[DB] Migration: Added last_updated column.");
+} catch (e) { /* Column already exists */ }
+
+// Migration 2: Check for score column
+try {
+    db.prepare("ALTER TABLE matches ADD COLUMN score INTEGER DEFAULT 0").run();
+    console.log("[DB] Migration: Added score column to matches.");
+} catch (e) { /* Column already exists */ }
+// ------------------------------
+
 const insertUser = db.prepare('INSERT OR IGNORE INTO tracked_users (name, tag, region) VALUES (?, ?, ?)');
 const updateUserTimestamp = db.prepare('UPDATE tracked_users SET last_updated = ? WHERE name = ? AND tag = ? AND region = ?');
 const getUserInfo = db.prepare('SELECT * FROM tracked_users WHERE name = ? AND tag = ? AND region = ?');
