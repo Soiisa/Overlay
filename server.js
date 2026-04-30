@@ -19,13 +19,12 @@ if (!fs.existsSync(dataDir)) { fs.mkdirSync(dataDir); }
 
 const db = new Database(path.join(dataDir, 'valorant_tracker.db'));
 
-// Database Schema
+// 1. Initial Table Creation
 db.exec(`
   CREATE TABLE IF NOT EXISTS tracked_users (
     name TEXT,
     tag TEXT,
     region TEXT,
-    last_updated INTEGER DEFAULT 0,
     PRIMARY KEY(name, tag, region)
   );
 
@@ -50,16 +49,24 @@ db.exec(`
   );
 `);
 
+// 2. SELF-HEALING MIGRATION
+// This checks if 'last_updated' exists, and adds it if it's missing.
+try {
+    db.prepare("ALTER TABLE tracked_users ADD COLUMN last_updated INTEGER DEFAULT 0").run();
+    console.log("[DB] Migration Success: Added 'last_updated' column.");
+} catch (e) {
+    // If it fails, it just means the column already exists. No action needed.
+}
+
+// Prepared Statements
 const insertUser = db.prepare('INSERT OR IGNORE INTO tracked_users (name, tag, region) VALUES (?, ?, ?)');
 const updateUserTimestamp = db.prepare('UPDATE tracked_users SET last_updated = ? WHERE name = ? AND tag = ? AND region = ?');
 const getUserInfo = db.prepare('SELECT * FROM tracked_users WHERE name = ? AND tag = ? AND region = ?');
-
 const insertMatch = db.prepare(`
   INSERT OR IGNORE INTO matches 
   (match_id, name, tag, region, map, agent, kills, deaths, assists, headshots, bodyshots, legshots, result, rounds_won, rounds_lost, rank, timestamp) 
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
-
 const getAllTrackedUsers = db.prepare('SELECT * FROM tracked_users');
 
 app.use(cors());
@@ -80,7 +87,6 @@ async function fetchAndSaveMatches(region, name, tag) {
             let addedCount = 0;
 
             for (const match of matches) {
-                // Find the player in the list (handle case insensitivity)
                 const playerStat = match.players.all_players.find(
                     p => p.name.toLowerCase() === name.toLowerCase() && p.tag.toLowerCase() === tag.toLowerCase()
                 );
@@ -117,7 +123,6 @@ async function fetchAndSaveMatches(region, name, tag) {
                 
                 if (info.changes > 0) addedCount++;
             }
-            // Mark the user as updated
             updateUserTimestamp.run(Date.now(), name.toLowerCase(), tag.toLowerCase(), region.toLowerCase());
             console.log(`[DB] Sync complete. ${addedCount} new matches found.`);
             return true;
@@ -128,7 +133,6 @@ async function fetchAndSaveMatches(region, name, tag) {
     }
 }
 
-// Background Poller
 setInterval(async () => {
     const users = getAllTrackedUsers.all();
     for (const user of users) {
@@ -145,15 +149,13 @@ app.get('/api/stats', async (req, res) => {
     const lowerTag = tag.toLowerCase();
     const lowerRegion = region.toLowerCase();
 
-    // Ensure user exists in tracking table
     insertUser.run(lowerName, lowerTag, lowerRegion);
     
-    // PRO-ACTIVE REFRESH LOGIC
     const userInfo = getUserInfo.get(lowerName, lowerTag, lowerRegion);
     const timeSinceUpdate = Date.now() - (userInfo?.last_updated || 0);
 
     if (timeSinceUpdate > REFRESH_THRESHOLD_MS) {
-        console.log(`[System] Data for ${lowerName} is stale (${Math.round(timeSinceUpdate/1000)}s old). Forcing refresh...`);
+        console.log(`[System] Data stale. Forcing refresh for ${lowerName}...`);
         await fetchAndSaveMatches(lowerRegion, lowerName, lowerTag);
     }
 
