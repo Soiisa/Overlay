@@ -182,7 +182,8 @@ app.get('/api/raw', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+// '0.0.0.0' tells Node to accept connections from outside the Docker container
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
     console.log(`Database stored securely in /data folder`);
 });
