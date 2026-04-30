@@ -7,24 +7,28 @@ const fs = require('fs');
 
 // --- CONFIGURATION ---
 const HENRIK_API_KEY = process.env.HENRIK_API_KEY || "YOUR_API_KEY_HERE"; 
-const REFRESH_THRESHOLD_MS = 2 * 60 * 1000; // Force refresh if data is older than 2 mins
-// ---------------------
+const REFRESH_THRESHOLD_MS = 2 * 60 * 1000; // Auto-fetch if data is older than 2 mins
+const PORT = process.env.PORT || 3000;
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const POLLING_INTERVAL_MS = 5 * 60 * 1000; 
 
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Database Setup
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) { fs.mkdirSync(dataDir); }
-
 const db = new Database(path.join(dataDir, 'valorant_tracker.db'));
 
-// 1. Initial Table Creation
+// Tables initialization
 db.exec(`
   CREATE TABLE IF NOT EXISTS tracked_users (
     name TEXT,
     tag TEXT,
     region TEXT,
+    last_updated INTEGER DEFAULT 0,
     PRIMARY KEY(name, tag, region)
   );
 
@@ -49,16 +53,13 @@ db.exec(`
   );
 `);
 
-// 2. SELF-HEALING MIGRATION
-// This checks if 'last_updated' exists, and adds it if it's missing.
+// Migration: Check for last_updated column
 try {
     db.prepare("ALTER TABLE tracked_users ADD COLUMN last_updated INTEGER DEFAULT 0").run();
-    console.log("[DB] Migration Success: Added 'last_updated' column.");
-} catch (e) {
-    // If it fails, it just means the column already exists. No action needed.
-}
+    console.log("[DB] Migration: Added last_updated column.");
+} catch (e) { /* Column already exists */ }
 
-// Prepared Statements
+// Database Prepared Statements
 const insertUser = db.prepare('INSERT OR IGNORE INTO tracked_users (name, tag, region) VALUES (?, ?, ?)');
 const updateUserTimestamp = db.prepare('UPDATE tracked_users SET last_updated = ? WHERE name = ? AND tag = ? AND region = ?');
 const getUserInfo = db.prepare('SELECT * FROM tracked_users WHERE name = ? AND tag = ? AND region = ?');
@@ -67,116 +68,73 @@ const insertMatch = db.prepare(`
   (match_id, name, tag, region, map, agent, kills, deaths, assists, headshots, bodyshots, legshots, result, rounds_won, rounds_lost, rank, timestamp) 
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
-const getAllTrackedUsers = db.prepare('SELECT * FROM tracked_users');
 
-app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
-
-async function fetchAndSaveMatches(region, name, tag) {
+// API Fetch Logic
+async function syncMatches(region, name, tag) {
     try {
-        console.log(`[API] Fetching fresh matches for ${name}#${tag}...`);
-        const encodedName = encodeURIComponent(name);
-        const encodedTag = encodeURIComponent(tag);
-        
-        const response = await axios.get(`https://api.henrikdev.xyz/valorant/v3/matches/${region}/${encodedName}/${encodedTag}?mode=competitive&size=10`, {
-            headers: { 'Authorization': HENRIK_API_KEY }
-        });
+        console.log(`[API] Fetching latest for ${name}#${tag}...`);
+        const url = `https://api.henrikdev.xyz/valorant/v3/matches/${region}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}?mode=competitive&size=10`;
+        const response = await axios.get(url, { headers: { 'Authorization': HENRIK_API_KEY } });
         
         if (response.data && response.data.data) {
-            const matches = response.data.data;
-            let addedCount = 0;
+            for (const m of response.data.data) {
+                const p = m.players.all_players.find(x => x.name.toLowerCase() === name.toLowerCase());
+                if (!p) continue;
 
-            for (const match of matches) {
-                const playerStat = match.players.all_players.find(
-                    p => p.name.toLowerCase() === name.toLowerCase() && p.tag.toLowerCase() === tag.toLowerCase()
+                const team = p.team.toLowerCase();
+                const teamData = m.teams[team];
+                const result = teamData.has_won ? 'Victory' : (teamData.rounds_won === teamData.rounds_lost ? 'Draw' : 'Defeat');
+
+                insertMatch.run(
+                    m.metadata.matchid, name.toLowerCase(), tag.toLowerCase(), region.toLowerCase(),
+                    m.metadata.map, p.character, p.stats.kills, p.stats.deaths, p.stats.assists,
+                    p.stats.headshots, p.stats.bodyshots, p.stats.legshots,
+                    result, teamData.rounds_won, teamData.rounds_lost,
+                    p.currenttier_patched || 'Unranked', m.metadata.game_start
                 );
-
-                if (!playerStat) continue;
-
-                const playerTeam = playerStat.team?.toLowerCase();
-                if (!playerTeam || !match.teams || !match.teams[playerTeam]) continue; 
-
-                const teamData = match.teams[playerTeam];
-                let result = 'Draw';
-                if (teamData.has_won) result = 'Victory';
-                else if (teamData.rounds_won < teamData.rounds_lost) result = 'Defeat';
-
-                const info = insertMatch.run(
-                    match.metadata.matchid,
-                    name.toLowerCase(),
-                    tag.toLowerCase(),
-                    region.toLowerCase(),
-                    match.metadata.map,
-                    playerStat.character,
-                    playerStat.stats.kills,
-                    playerStat.stats.deaths,
-                    playerStat.stats.assists,
-                    playerStat.stats.headshots,
-                    playerStat.stats.bodyshots,
-                    playerStat.stats.legshots,
-                    result,
-                    teamData.rounds_won,
-                    teamData.rounds_lost,
-                    playerStat.currenttier_patched || 'Unranked',
-                    match.metadata.game_start
-                );
-                
-                if (info.changes > 0) addedCount++;
             }
             updateUserTimestamp.run(Date.now(), name.toLowerCase(), tag.toLowerCase(), region.toLowerCase());
-            console.log(`[DB] Sync complete. ${addedCount} new matches found.`);
             return true;
         }
-    } catch (error) {
-        console.error(`[Error] API Fetch failed: ${error.message}`);
+    } catch (err) {
+        console.error(`[Error] Sync failed for ${name}:`, err.message);
         return false;
     }
 }
 
-setInterval(async () => {
-    const users = getAllTrackedUsers.all();
-    for (const user of users) {
-        await fetchAndSaveMatches(user.region, user.name, user.tag);
-        await new Promise(r => setTimeout(r, 2000)); 
-    }
-}, POLLING_INTERVAL_MS);
-
+// Routes
 app.get('/api/stats', async (req, res) => {
-    const { name, tag, region, date } = req.query;
-    if (!name || !tag || !region) return res.status(400).json({ error: 'Missing params' });
+    const { region, name, tag, date } = req.query;
+    if (!region || !name || !tag) return res.status(400).json({ error: "Missing params" });
 
-    const lowerName = name.toLowerCase();
-    const lowerTag = tag.toLowerCase();
-    const lowerRegion = region.toLowerCase();
+    const lName = name.toLowerCase();
+    const lTag = tag.toLowerCase();
+    const lRegion = region.toLowerCase();
 
-    insertUser.run(lowerName, lowerTag, lowerRegion);
-    
-    const userInfo = getUserInfo.get(lowerName, lowerTag, lowerRegion);
-    const timeSinceUpdate = Date.now() - (userInfo?.last_updated || 0);
+    insertUser.run(lName, lTag, lRegion);
+    const user = getUserInfo.get(lName, lTag, lRegion);
 
-    if (timeSinceUpdate > REFRESH_THRESHOLD_MS) {
-        console.log(`[System] Data stale. Forcing refresh for ${lowerName}...`);
-        await fetchAndSaveMatches(lowerRegion, lowerName, lowerTag);
+    // If data is older than threshold, sync now
+    if (Date.now() - (user?.last_updated || 0) > REFRESH_THRESHOLD_MS) {
+        await syncMatches(lRegion, lName, lTag);
     }
 
-    let matches;
+    let sql = `SELECT * FROM matches WHERE name = ? AND tag = ? AND region = ?`;
+    let params = [lName, lTag, lRegion];
+
     if (date) {
-        const startTime = Math.floor(new Date(date + "T00:00:00").getTime() / 1000);
-        matches = db.prepare(`
-            SELECT * FROM matches 
-            WHERE name = ? AND tag = ? AND region = ? AND timestamp >= ? 
-            ORDER BY timestamp DESC LIMIT 15
-        `).all(lowerName, lowerTag, lowerRegion, startTime);
-    } else {
-        matches = db.prepare(`
-            SELECT * FROM matches 
-            WHERE name = ? AND tag = ? AND region = ? 
-            ORDER BY timestamp DESC LIMIT 10
-        `).all(lowerName, lowerTag, lowerRegion);
+        const startTimestamp = Math.floor(new Date(date + "T00:00:00").getTime() / 1000);
+        sql += ` AND timestamp >= ?`;
+        params.push(startTimestamp);
     }
 
+    const matches = db.prepare(sql + ` ORDER BY timestamp DESC LIMIT 15`).all(...params);
     res.json({ matches });
 });
 
 app.get('/api/message', (req, res) => res.json({ message: "" }));
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+
+// Start Server
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+});
