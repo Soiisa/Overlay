@@ -8,108 +8,83 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tungsten', 'Segoe UI', sans-serif; }
         @import url('https://fonts.cdnfonts.com/css/tungsten');
-        
         html, body { background: transparent !important; height: 100%; overflow: hidden; }
-
         .overlay-container {
             position: relative; width: 550px; height: 280px; display: flex; flex-direction: column;
-            background: rgba(15, 25, 35, 0.50); border-radius: 8px; border: 1px solid rgba(255, 70, 85, 0.3);
+            background: rgba(15, 25, 35, 0.6); border-radius: 8px; border: 1px solid rgba(255, 70, 85, 0.3);
         }
-
         .section-title {
             display: flex; justify-content: space-between; align-items: center; height: 40px;
             padding: 0 20px; color: #ff4655; font-size: 22px; text-transform: uppercase;
-            background: rgba(10, 15, 25, 0.5); border-bottom: 1px solid rgba(255, 70, 85, 0.2);
+            background: rgba(10, 15, 25, 0.7); border-bottom: 1px solid rgba(255, 70, 85, 0.2);
         }
-
         .content-area { flex: 1; display: flex; padding: 15px 20px; position: relative; }
-
-        .agent-row {
-            display: flex; gap: 12px; height: 85px; position: absolute; top: 15px; left: 20px; right: 20px; justify-content: center;
-        }
-
+        .agent-row { display: flex; gap: 12px; height: 85px; position: absolute; top: 15px; left: 20px; right: 20px; justify-content: center; }
         .agent-portrait { display: flex; flex-direction: column; align-items: center; min-width: 60px; }
-
-        .agent-icon {
-            width: 60px; height: 60px; border-radius: 8px; border: 2px solid rgba(45, 55, 72, 0.9);
-            background: linear-gradient(135deg, rgba(42, 67, 101, 0.9), rgba(74, 85, 104, 0.9));
-            overflow: hidden;
-        }
-
+        .agent-icon { width: 60px; height: 60px; border-radius: 8px; border: 2px solid rgba(45, 55, 72, 0.9); background: #2a2a2a; overflow: hidden; }
         .agent-icon img { width: 100%; height: 100%; object-fit: cover; }
-
         .match-result-bar { width: 100%; height: 4px; border-radius: 2px; margin-top: 6px; }
-        .win-bar { background: #2ecc71; } 
-        .loss-bar { background: #ff4655; } 
+        .win-bar { background: #2ecc71; box-shadow: 0 0 8px #2ecc71; } 
+        .loss-bar { background: #ff4655; box-shadow: 0 0 8px #ff4655; } 
         .draw-bar { background: #f1c40f; }
-
         .stats-section { display: flex; height: 120px; position: absolute; bottom: 15px; left: 20px; right: 20px; }
-
-        .rank-section { flex: 2; display: flex; gap: 12px; align-items: center; position: relative; }
-        .rank-badge { width: 100px; height: 100px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
-        .rank-badge img { width: 90%; height: 90%; object-fit: contain; }
-
-        .rank-name { font-size: 24px; color: #fff; text-transform: uppercase; font-weight: bold; }
-        .rank-subtitle { font-size: 18px; color: #a9b7c6; text-transform: uppercase; }
-
-        .stats-group { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-left: 25px; position: relative; }
-
-        .stat-set { position: absolute; display: flex; flex-direction: column; gap: 8px; transition: 0.5s; opacity: 0; width: 100%; }
+        .rank-section { flex: 2; display: flex; gap: 12px; align-items: center; position: relative; border-right: 1px solid rgba(255,255,255,0.1); }
+        .rank-badge { width: 90px; height: 90px; display: flex; justify-content: center; align-items: center; }
+        .rank-badge img { width: 100%; height: 100%; object-fit: contain; }
+        .rank-name { font-size: 26px; color: #fff; text-transform: uppercase; font-weight: bold; }
+        .rank-subtitle { font-size: 16px; color: #a9b7c6; text-transform: uppercase; }
+        .stats-group { flex: 1.5; display: flex; flex-direction: column; justify-content: center; padding-left: 20px; position: relative; }
+        .stat-set { position: absolute; display: flex; flex-direction: column; gap: 4px; transition: 0.5s; opacity: 0; width: 100%; }
         .stat-set.active { opacity: 1; z-index: 1; }
-
-        .stat-label { font-size: 18px; color: #a9b7c6; text-transform: uppercase; }
-        .stat-value { font-size: 28px; font-weight: 700; }
-
-        .win-stat .stat-value { color: #2ecc71; } 
-        .kd-stat .stat-value { color: #ff4655; }
-        .hs-stat .stat-value { color: #4cc9f0; } 
-        .daily-stat .stat-value { color: #f3a712; }
-
-        #message-container { width: 550px; padding: 12px 20px; margin-top: 10px; background: rgba(15, 25, 35, 0.85); color: #ff4655; border-radius: 8px; font-size: 25px; display: none; text-align: center; }
-
-        .indicator-dot { width: 6px; height: 6px; background: rgba(255,255,255,0.3); border-radius: 50%; }
+        .stat-label { font-size: 16px; color: #a9b7c6; text-transform: uppercase; }
+        .stat-value { font-size: 30px; font-weight: 700; line-height: 1; }
+        .win-stat .stat-value { color: #2ecc71; } .kd-stat .stat-value { color: #ff4655; }
+        .hs-stat .stat-value { color: #4cc9f0; } .daily-stat .stat-value { color: #f3a712; }
+        .stat-indicator { position: absolute; bottom: -5px; right: 0; display: flex; gap: 4px; }
+        .indicator-dot { width: 6px; height: 6px; background: rgba(255,255,255,0.2); border-radius: 50%; }
         .indicator-dot.active { background: #ff4655; }
-        .stat-indicator { position: absolute; bottom: 5px; right: 10px; display: flex; gap: 4px; }
     </style>
 </head>
 <body>
     <div class="overlay-container">
-        <div class="section-title"><i class="fas fa-user-secret"></i> Recent Agents (Competitive)</div>
+        <div class="section-title">
+            <span><i class="fas fa-crosshairs"></i> Competitive Tracker</span>
+            <span id="session-tag" style="font-size: 12px; color: #a9b7c6;"></span>
+        </div>
         <div class="content-area">
             <div class="agent-row" id="agents-row"></div>
             <div class="stats-section">
                 <div class="rank-section">
                     <div class="rank-badge"><img id="rank-icon" src="" alt=""></div>
                     <div class="rank-details">
-                        <div class="rank-name" id="rank-name">Loading...</div>
-                        <div class="rank-subtitle" id="rank-subtitle">Current Rank</div>
+                        <div class="rank-name" id="rank-name">---</div>
+                        <div class="rank-subtitle">Current Rating</div>
                     </div>
                 </div>
                 <div class="stats-group">
                     <div class="stat-set set-1 active">
-                        <div class="stat-box win-stat"><div class="stat-label">WIN %</div><div class="stat-value" id="win-rate">0%</div></div>
-                        <div class="stat-box kd-stat"><div class="stat-label">K/D</div><div class="stat-value" id="kd-ratio">0.00</div></div>
+                        <div class="stat-box win-stat"><div class="stat-label">Win Rate</div><div class="stat-value" id="win-rate">0%</div></div>
+                        <div class="stat-box kd-stat"><div class="stat-label">K/D Ratio</div><div class="stat-value" id="kd-ratio">0.00</div></div>
                     </div>
                     <div class="stat-set set-2">
-                        <div class="stat-box hs-stat"><div class="stat-label">HEADSHOT %</div><div class="stat-value" id="hs-percentage">0%</div></div>
-                        <div class="stat-box daily-stat"><div class="stat-label">DAILY W/L</div><div class="stat-value" id="daily-wl">0-0</div></div>
+                        <div class="stat-box hs-stat"><div class="stat-label">Headshot %</div><div class="stat-value" id="hs-percentage">0%</div></div>
+                        <div class="stat-box daily-stat"><div class="stat-label">Session W/L</div><div class="stat-value" id="daily-wl">0-0</div></div>
                     </div>
                     <div class="stat-indicator">
-                        <div class="indicator-dot active" data-set="1"></div>
-                        <div class="indicator-dot" data-set="2"></div>
+                        <div class="indicator-dot active"></div>
+                        <div class="indicator-dot"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div id="message-container"></div>
 
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const player = {
         region: urlParams.get('region') || 'eu',
-        name: urlParams.get('name') || 'Player',
-        tag: urlParams.get('tag') || '000'
+        name: urlParams.get('name') || '',
+        tag: urlParams.get('tag') || ''
     };
 
     const agentUUIDs = {
@@ -125,8 +100,7 @@
         'Yoru': '7f94d92c-4234-0a36-9646-3a87eb8b5c89', 'Sage': '569fdd95-4d10-43ab-ca70-79becc718b46',
         'Reyna': 'a3bfb853-43b2-7238-a4f1-ad90e9e46bcc', 'Omen': '8e253930-4c05-31dd-1b6c-968525494517',
         'Jett': 'add6443a-41bd-e414-f6ad-e58d267f4e95', 'Clove': '1dbf2edd-4729-0984-3115-daa5eed44993',
-        'Tejo': 'b444168c-4e35-8076-db47-ef9bf368f384', 'Vyse': 'efba5359-4016-a1e5-7626-b1ae76895940',
-        'Waylay': 'df1cb487-4902-002e-5c17-d28e83e78588'
+        'Tejo': 'b444168c-4e35-8076-db47-ef9bf368f384', 'Vyse': 'efba5359-4016-a1e5-7626-b1ae76895940'
     };
 
     const rankImages = {
@@ -141,29 +115,30 @@
         'Radiant': '27.png', 'Unranked': '0.png'
     };
 
-    async function fetchMatches() {
+    async function fetchData() {
+        if(!player.name || !player.tag) return;
         try {
             const date = urlParams.get('date');
             let url = `/api/stats?region=${player.region}&name=${player.name}&tag=${player.tag}`;
-            if (date) url += `&date=${date}`;
+            if (date) {
+                url += `&date=${date}`;
+                document.getElementById('session-tag').innerText = `Session: ${date}`;
+            }
 
             const res = await fetch(url);
             const data = await res.json();
             
             if (!data.matches || data.matches.length === 0) {
-                document.getElementById('agents-row').innerHTML = `<div style="color:#a9b7c6; font-style:italic">Waiting for first match of the day...</div>`;
+                document.getElementById('agents-row').innerHTML = `<div style="color:#a9b7c6; font-size:14px; margin-top:30px;">No ranked matches found for this period.</div>`;
                 return;
             }
 
-            renderAgents(data.matches);
-            renderStats(data.matches);
-            updateRank(data.matches[0].rank);
-        } catch (e) { 
-            console.error(e);
-        }
+            updateUI(data.matches);
+        } catch (e) { console.error("Update failed", e); }
     }
 
-    function renderAgents(matches) {
+    function updateUI(matches) {
+        // Agents Row
         const row = document.getElementById('agents-row');
         row.innerHTML = matches.slice(0, 7).map(m => `
             <div class="agent-portrait">
@@ -171,45 +146,38 @@
                 <div class="match-result-bar ${m.result === 'Victory' ? 'win-bar' : m.result === 'Defeat' ? 'loss-bar' : 'draw-bar'}"></div>
             </div>
         `).join('');
-    }
 
-    function renderStats(matches) {
+        // Stats Logic
         const wins = matches.filter(m => m.result === 'Victory').length;
         document.getElementById('win-rate').innerText = ((wins / matches.length) * 100).toFixed(1) + '%';
         
         let k = 0, d = 0, hs = 0, b = 0, l = 0;
-        matches.forEach(m => { 
-            k += m.kills; d += m.deaths; 
-            hs += m.headshots; b += m.bodyshots; l += m.legshots; 
-        });
+        matches.forEach(m => { k += m.kills; d += m.deaths; hs += m.headshots; b += m.bodyshots; l += m.legshots; });
         
         document.getElementById('kd-ratio').innerText = (k / (d || 1)).toFixed(2);
         document.getElementById('hs-percentage').innerText = ((hs / (hs + b + l || 1)) * 100).toFixed(1) + '%';
         
-        // Fix: Use Local Time Comparison for Daily W/L
-        const todayLocal = new Date().toLocaleDateString('en-CA'); // Returns YYYY-MM-DD
-        const dayMatches = matches.filter(m => {
-            const matchLocal = new Date(m.timestamp * 1000).toLocaleDateString('en-CA');
-            return matchLocal === todayLocal;
-        });
+        // Session W/L (Matches played specifically today)
+        const today = new Date().toLocaleDateString('en-CA');
+        const sessionMatches = matches.filter(m => new Date(m.timestamp * 1000).toLocaleDateString('en-CA') === today);
+        const sW = sessionMatches.filter(m => m.result === 'Victory').length;
+        const sL = sessionMatches.filter(m => m.result === 'Defeat').length;
+        document.getElementById('daily-wl').innerText = `${sW}W - ${sL}L`;
 
-        const dW = dayMatches.filter(m => m.result === 'Victory').length;
-        const dL = dayMatches.filter(m => m.result === 'Defeat').length;
-        document.getElementById('daily-wl').innerText = `${dW}-${dL}`;
+        // Rank
+        const latest = matches[0];
+        document.getElementById('rank-name').innerText = latest.rank;
+        document.getElementById('rank-icon').src = `https://trackercdn.com/cdn/tracker.gg/valorant/icons/tiersv2/${rankImages[latest.rank] || '0.png'}`;
     }
 
-    function updateRank(rank) {
-        document.getElementById('rank-name').innerText = rank;
-        document.getElementById('rank-icon').src = `https://trackercdn.com/cdn/tracker.gg/valorant/icons/tiersv2/${rankImages[rank] || '0.png'}`;
-    }
-
+    // Auto-rotate stats sets every 10s
     setInterval(() => {
         document.querySelectorAll('.stat-set').forEach(s => s.classList.toggle('active'));
         document.querySelectorAll('.indicator-dot').forEach(d => d.classList.toggle('active'));
     }, 10000);
 
-    fetchMatches();
-    setInterval(fetchMatches, 300000); // 5 minutes
+    fetchData();
+    setInterval(fetchData, 60000); // Check for updates every 1 minute
 </script>
 </body>
 </html>
