@@ -187,3 +187,21 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Database stored securely in /data folder`);
 });
+
+// API Endpoint: Download the Database securely
+app.get('/api/download-db', (req, res) => {
+    const secret = req.query.secret;
+    
+    // Change 'my_secret_password' to whatever you want
+    if (secret !== 'my_secret_password') {
+        return res.status(403).json({ error: "Unauthorized. Nice try!" });
+    }
+
+    const dbPath = path.join(dataDir, 'valorant_tracker.db');
+    res.download(dbPath, 'valorant_tracker_backup.db', (err) => {
+        if (err) {
+            console.error("Error downloading database:", err);
+            res.status(500).send("Error downloading file.");
+        }
+    });
+});
