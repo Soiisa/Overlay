@@ -8,42 +8,65 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tungsten', 'Segoe UI', sans-serif; }
         @import url('https://fonts.cdnfonts.com/css/tungsten');
+        
         html, body { background: transparent !important; height: 100%; overflow: hidden; }
+
         .overlay-container {
             position: relative; width: 550px; height: 280px; display: flex; flex-direction: column;
             background: rgba(15, 25, 35, 0.50); border-radius: 8px; border: 1px solid rgba(255, 70, 85, 0.3);
         }
+
         .section-title {
             display: flex; justify-content: space-between; align-items: center; height: 40px;
             padding: 0 20px; color: #ff4655; font-size: 22px; text-transform: uppercase;
             background: rgba(10, 15, 25, 0.5); border-bottom: 1px solid rgba(255, 70, 85, 0.2);
         }
+
         .content-area { flex: 1; display: flex; padding: 15px 20px; position: relative; }
+
         .agent-row {
             display: flex; gap: 12px; height: 85px; position: absolute; top: 15px; left: 20px; right: 20px; justify-content: center;
         }
+
         .agent-portrait { display: flex; flex-direction: column; align-items: center; min-width: 60px; }
+
         .agent-icon {
             width: 60px; height: 60px; border-radius: 8px; border: 2px solid rgba(45, 55, 72, 0.9);
             background: linear-gradient(135deg, rgba(42, 67, 101, 0.9), rgba(74, 85, 104, 0.9));
+            overflow: hidden;
         }
+
         .agent-icon img { width: 100%; height: 100%; object-fit: cover; }
+
         .match-result-bar { width: 100%; height: 4px; border-radius: 2px; margin-top: 6px; }
-        .win-bar { background: #2ecc71; } .loss-bar { background: #ff4655; } .draw-bar { background: #f1c40f; }
+        .win-bar { background: #2ecc71; } 
+        .loss-bar { background: #ff4655; } 
+        .draw-bar { background: #f1c40f; }
+
         .stats-section { display: flex; height: 120px; position: absolute; bottom: 15px; left: 20px; right: 20px; }
+
         .rank-section { flex: 2; display: flex; gap: 12px; align-items: center; position: relative; }
         .rank-badge { width: 100px; height: 100px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
         .rank-badge img { width: 90%; height: 90%; object-fit: contain; }
-        .rank-name { font-size: 24px; color: #fff; text-transform: uppercase; }
+
+        .rank-name { font-size: 24px; color: #fff; text-transform: uppercase; font-weight: bold; }
         .rank-subtitle { font-size: 18px; color: #a9b7c6; text-transform: uppercase; }
+
         .stats-group { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-left: 25px; position: relative; }
-        .stat-set { position: absolute; display: flex; flex-direction: column; gap: 8px; transition: 0.5s; opacity: 0; }
+
+        .stat-set { position: absolute; display: flex; flex-direction: column; gap: 8px; transition: 0.5s; opacity: 0; width: 100%; }
         .stat-set.active { opacity: 1; z-index: 1; }
+
         .stat-label { font-size: 18px; color: #a9b7c6; text-transform: uppercase; }
         .stat-value { font-size: 28px; font-weight: 700; }
-        .win-stat .stat-value { color: #2ecc71; } .kd-stat .stat-value { color: #ff4655; }
-        .hs-stat .stat-value { color: #4cc9f0; } .daily-stat .stat-value { color: #f3a712; }
-        #message-container { width: 550px; padding: 12px 20px; margin-top: 10px; background: rgba(15, 25, 35, 0.85); color: #ff4655; border-radius: 8px; font-size: 25px; display: none; }
+
+        .win-stat .stat-value { color: #2ecc71; } 
+        .kd-stat .stat-value { color: #ff4655; }
+        .hs-stat .stat-value { color: #4cc9f0; } 
+        .daily-stat .stat-value { color: #f3a712; }
+
+        #message-container { width: 550px; padding: 12px 20px; margin-top: 10px; background: rgba(15, 25, 35, 0.85); color: #ff4655; border-radius: 8px; font-size: 25px; display: none; text-align: center; }
+
         .indicator-dot { width: 6px; height: 6px; background: rgba(255,255,255,0.3); border-radius: 50%; }
         .indicator-dot.active { background: #ff4655; }
         .stat-indicator { position: absolute; bottom: 5px; right: 10px; display: flex; gap: 4px; }
@@ -67,7 +90,7 @@
                         <div class="stat-box win-stat"><div class="stat-label">WIN %</div><div class="stat-value" id="win-rate">0%</div></div>
                         <div class="stat-box kd-stat"><div class="stat-label">K/D</div><div class="stat-value" id="kd-ratio">0.00</div></div>
                     </div>
-                    <div class="stat-set set-2 inactive">
+                    <div class="stat-set set-2">
                         <div class="stat-box hs-stat"><div class="stat-label">HEADSHOT %</div><div class="stat-value" id="hs-percentage">0%</div></div>
                         <div class="stat-box daily-stat"><div class="stat-label">DAILY W/L</div><div class="stat-value" id="daily-wl">0-0</div></div>
                     </div>
@@ -89,8 +112,34 @@
         tag: urlParams.get('tag') || '000'
     };
 
-    const agentUUIDs = { 'Sova': '320b2a48-4d9b-a075-30f1-1f93a9b638fa', 'Jett': 'add6443a-41bd-e414-f6ad-e58d267f4e95', 'Reyna': 'a3bfb853-43b2-7238-a4f1-ad90e9e46bcc' /* add others... */ };
-    const rankImages = { 'Gold 1': '12.png', 'Platinum 1': '15.png', 'Unranked': '0.png' /* add others... */ };
+    const agentUUIDs = {
+        'Gekko': 'e370fa57-4757-3604-3648-499e1f642d3f', 'Fade': 'dade69b4-4f5a-8528-247b-219e5a1facd6',
+        'Breach': '5f8d3a7f-467b-97f3-062c-13acf203c006', 'Deadlock': 'cc8b64c8-4b25-4ff9-6e7f-37b4da43d235',
+        'Raze': 'f94c3b30-42be-e959-889c-5aa313dba261', 'Chamber': '22697a3d-45bf-8dd7-4fec-84a9e28c69d7',
+        'KAY/O': '601dbbe7-43ce-be57-2a40-4abd24953621', 'Skye': '6f2a04ca-43e0-be17-7f36-b3908627744d',
+        'Cypher': '117ed9e3-49f3-6512-3ccf-0cada7e3823b', 'Sova': '320b2a48-4d9b-a075-30f1-1f93a9b638fa',
+        'Killjoy': '1e58de9c-4950-5125-93e9-a0aee9f98746', 'Harbor': '95b78ed7-4637-86d9-7e41-71ba8c293152',
+        'Viper': '707eab51-4836-f488-046a-cda6bf494859', 'Phoenix': 'eb93336a-449b-9c1b-0a54-a891f7921d69',
+        'Astra': '41fb69c1-4189-7b37-f117-bcaf1e96f1bf', 'Brimstone': '9f0d8ba9-4140-b941-57d3-a7ad57c6b417',
+        'Iso': '0e38b510-41a8-5780-5e8f-568b2a4f2d6c', 'Neon': 'bb2a4828-46eb-8cd1-e765-15848195d751',
+        'Yoru': '7f94d92c-4234-0a36-9646-3a87eb8b5c89', 'Sage': '569fdd95-4d10-43ab-ca70-79becc718b46',
+        'Reyna': 'a3bfb853-43b2-7238-a4f1-ad90e9e46bcc', 'Omen': '8e253930-4c05-31dd-1b6c-968525494517',
+        'Jett': 'add6443a-41bd-e414-f6ad-e58d267f4e95', 'Clove': '1dbf2edd-4729-0984-3115-daa5eed44993',
+        'Tejo': 'b444168c-4e35-8076-db47-ef9bf368f384', 'Vyse': 'efba5359-4016-a1e5-7626-b1ae76895940',
+        'Waylay': 'df1cb487-4902-002e-5c17-d28e83e78588'
+    };
+
+    const rankImages = {
+        'Iron 1': '3.png', 'Iron 2': '4.png', 'Iron 3': '5.png',
+        'Bronze 1': '6.png', 'Bronze 2': '7.png', 'Bronze 3': '8.png',
+        'Silver 1': '9.png', 'Silver 2': '10.png', 'Silver 3': '11.png',
+        'Gold 1': '12.png', 'Gold 2': '13.png', 'Gold 3': '14.png',
+        'Platinum 1': '15.png', 'Platinum 2': '16.png', 'Platinum 3': '17.png',
+        'Diamond 1': '18.png', 'Diamond 2': '19.png', 'Diamond 3': '20.png',
+        'Ascendant 1': '21.png', 'Ascendant 2': '22.png', 'Ascendant 3': '23.png',
+        'Immortal 1': '24.png', 'Immortal 2': '25.png', 'Immortal 3': '26.png',
+        'Radiant': '27.png', 'Unranked': '0.png'
+    };
 
     async function fetchMatches() {
         try {
@@ -100,12 +149,18 @@
 
             const res = await fetch(url);
             const data = await res.json();
-            if (!data.matches || data.matches.length === 0) throw new Error(date ? 'No matches today' : 'No matches');
+            
+            if (!data.matches || data.matches.length === 0) {
+                document.getElementById('agents-row').innerHTML = `<div style="color:#a9b7c6; font-style:italic">Waiting for first match of the day...</div>`;
+                return;
+            }
 
             renderAgents(data.matches);
             renderStats(data.matches);
             updateRank(data.matches[0].rank);
-        } catch (e) { document.getElementById('agents-row').innerHTML = `<div style="color:red">${e.message}</div>`; }
+        } catch (e) { 
+            console.error(e);
+        }
     }
 
     function renderAgents(matches) {
@@ -113,7 +168,7 @@
         row.innerHTML = matches.slice(0, 7).map(m => `
             <div class="agent-portrait">
                 <div class="agent-icon"><img src="https://media.valorant-api.com/agents/${agentUUIDs[m.agent] || 'displayicon'}/displayicon.png"></div>
-                <div class="match-result-bar ${m.result === 'Victory' ? 'win-bar' : 'loss-bar'}"></div>
+                <div class="match-result-bar ${m.result === 'Victory' ? 'win-bar' : m.result === 'Defeat' ? 'loss-bar' : 'draw-bar'}"></div>
             </div>
         `).join('');
     }
@@ -123,15 +178,24 @@
         document.getElementById('win-rate').innerText = ((wins / matches.length) * 100).toFixed(1) + '%';
         
         let k = 0, d = 0, hs = 0, b = 0, l = 0;
-        matches.forEach(m => { k += m.kills; d += m.deaths; hs += m.headshots; b += m.bodyshots; l += m.legshots; });
+        matches.forEach(m => { 
+            k += m.kills; d += m.deaths; 
+            hs += m.headshots; b += m.bodyshots; l += m.legshots; 
+        });
         
         document.getElementById('kd-ratio').innerText = (k / (d || 1)).toFixed(2);
         document.getElementById('hs-percentage').innerText = ((hs / (hs + b + l || 1)) * 100).toFixed(1) + '%';
         
-        const today = new Date().toISOString().split('T')[0];
-        const dayMatches = matches.filter(m => new Date(m.timestamp * 1000).toISOString().split('T')[0] === today);
+        // Fix: Use Local Time Comparison for Daily W/L
+        const todayLocal = new Date().toLocaleDateString('en-CA'); // Returns YYYY-MM-DD
+        const dayMatches = matches.filter(m => {
+            const matchLocal = new Date(m.timestamp * 1000).toLocaleDateString('en-CA');
+            return matchLocal === todayLocal;
+        });
+
         const dW = dayMatches.filter(m => m.result === 'Victory').length;
-        document.getElementById('daily-wl').innerText = `${dW}-${dayMatches.length - dW}`;
+        const dL = dayMatches.filter(m => m.result === 'Defeat').length;
+        document.getElementById('daily-wl').innerText = `${dW}-${dL}`;
     }
 
     function updateRank(rank) {
@@ -139,14 +203,13 @@
         document.getElementById('rank-icon').src = `https://trackercdn.com/cdn/tracker.gg/valorant/icons/tiersv2/${rankImages[rank] || '0.png'}`;
     }
 
-    let currentSet = 1;
     setInterval(() => {
         document.querySelectorAll('.stat-set').forEach(s => s.classList.toggle('active'));
         document.querySelectorAll('.indicator-dot').forEach(d => d.classList.toggle('active'));
     }, 10000);
 
     fetchMatches();
-    setInterval(fetchMatches, 300000);
+    setInterval(fetchMatches, 300000); // 5 minutes
 </script>
 </body>
 </html>
